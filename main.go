@@ -36,7 +36,7 @@ func main() {
 	// 'Mac' options tailor the application when running an macOS.
 	app := application.New(application.Options{
 		Name:        "Sepat",
-		Description: "A demo of using raw HTML & CSS",
+		Description: "串口通信助手",
 		Services: []application.Service{
 
 			application.NewService(&GreetService{}),
@@ -55,7 +55,7 @@ func main() {
 	// 'BackgroundColour' is the background colour of the window.
 	// 'URL' is the URL that will be loaded into the webview.
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: "Main Window",
+		Title: "Sepat",
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
 			Backdrop:                application.MacBackdropTranslucent,

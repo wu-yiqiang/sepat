@@ -153,20 +153,18 @@ const handleSendText = () => {}
   height: 100%;
   display: flex;
   justify-content: space-between;
-
   .left-container {
     flex: 1;
     display: flex;
     row-gap: 14px;
     flex-direction: column;
-
     .left-top-container {
       flex: 1;
       display: flex;
       flex-direction: column;
       row-gap: 10px;
       padding: 14px;
-      padding-top: 36px;
+      padding-top: 28px;
       border-bottom: 1px solid rgb(198, 198, 198);
 
       .el-textarea {
