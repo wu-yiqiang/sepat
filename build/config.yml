@@ -8,7 +8,7 @@ info:
   companyName: "TL Company" # The name of the company
   productName: "Sepat" # The name of the application
   productIdentifier: "com.mycompany.myproduct" # The unique product identifier
-  description: "A program that does X" # The application description
+  description: "串口调试助手" # The application description
   copyright: "(c) 2026, TL Company" # Copyright text
   comments: "Some Product Comments" # Comments
   version: "0.0.1" # The application version
