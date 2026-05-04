@@ -3,26 +3,26 @@
 #
 # The lines below are called `modelines`. See `:help modeline`
 
-name: "sepat"
+name: "Sepat"
 arch: ${GOARCH}
 platform: "linux"
-version: "0.1.0"
+version: "0.0.1"
 section: "default"
 priority: "extra"
 maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
-description: "A Sepat application"
-vendor: "My Company"
+description: "串口调试助手"
+vendor: "TL Company"
 homepage: "https://wails.io"
 license: "MIT"
 release: "1"
 
 contents:
-  - src: "./bin/sepat"
-    dst: "/usr/local/bin/sepat"
+  - src: "./bin/Sepat"
+    dst: "/usr/local/bin/Sepat"
   - src: "./build/appicon.png"
-    dst: "/usr/share/icons/hicolor/128x128/apps/sepat.png"
-  - src: "./build/linux/sepat.desktop"
-    dst: "/usr/share/applications/sepat.desktop"
+    dst: "/usr/share/icons/hicolor/128x128/apps/Sepat.png"
+  - src: "./build/linux/Sepat.desktop"
+    dst: "/usr/share/applications/Sepat.desktop"
 
 # Default dependencies for Debian 12/Ubuntu 22.04+ with WebKit 4.1
 depends:

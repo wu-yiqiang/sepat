@@ -1,13 +1,13 @@
 [Desktop Entry]
 Version=1.0
-Name=My Product
-Comment=A Sepat application
+Name=Sepat
+Comment=串口调试助手
 # The Exec line includes %u to pass the URL to the application
-Exec=/usr/local/bin/sepat %u
+Exec=/usr/local/bin/Sepat %u
 Terminal=false
 Type=Application
-Icon=sepat
+Icon=Sepat
 Categories=Utility;
-StartupWMClass=sepat
+StartupWMClass=Sepat
 
  

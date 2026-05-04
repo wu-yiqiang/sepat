@@ -59,5 +59,9 @@ Take a moment to familiarize yourself with your project structure:
 Happy coding with Wails3! If you encounter any issues or have questions, don't hesitate to consult the documentation or reach out to the Wails community.
 
 
+修改配置后运行
+   wails3 task common:update:build-assets
+   wails3 build
+
 打包windows exec
    wails3 build GOOS=windows GOARCH=amd64

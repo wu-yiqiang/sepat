@@ -166,10 +166,8 @@ const handleSendText = () => {}
       padding: 14px;
       padding-top: 28px;
       border-bottom: 1px solid rgb(198, 198, 198);
-
       .el-textarea {
         flex: 1;
-
         ::v-deep(.el-textarea__inner) {
           height: 100%;
         }
