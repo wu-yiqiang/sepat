@@ -164,7 +164,6 @@ const handleSendText = () => {}
       flex-direction: column;
       row-gap: 10px;
       padding: 14px;
-      padding-top: 28px;
       border-bottom: 1px solid rgb(198, 198, 198);
       .el-textarea {
         flex: 1;

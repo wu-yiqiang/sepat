@@ -38,7 +38,6 @@ func main() {
 		Name:        "Sepat",
 		Description: "串口通信助手",
 		Services: []application.Service{
-
 			application.NewService(&GreetService{}),
 		},
 		Assets: application.AssetOptions{
@@ -57,9 +56,15 @@ func main() {
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title: "Sepat",
 		Mac: application.MacWindow{
+			TitleBar: application.MacTitleBar{
+				AppearsTransparent: false,
+				Hide:               false,
+				HideTitle:          false,
+				FullSizeContent:    true,
+			},
 			InvisibleTitleBarHeight: 50,
 			Backdrop:                application.MacBackdropTranslucent,
-			TitleBar:                application.MacTitleBarHiddenInset,
+			// TitleBar:                application.MacTitleBarHiddenInset,
 		},
 		BackgroundColour: application.NewRGB(27, 38, 54),
 		URL:              "/",

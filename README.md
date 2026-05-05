@@ -65,3 +65,6 @@ Happy coding with Wails3! If you encounter any issues or have questions, don't h
 
 打包windows exec
    wails3 build GOOS=windows GOARCH=amd64
+
+Mac打包
+   wails3 package
