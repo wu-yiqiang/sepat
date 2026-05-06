@@ -3,10 +3,8 @@ package main
 import (
 	"embed"
 	_ "embed"
-	"log"
-	"time"
-
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"log"
 )
 
 // Wails uses Go's `embed` package to embed the frontend files into the binary.
@@ -21,7 +19,7 @@ func init() {
 	// Register a custom event whose associated data type is string.
 	// This is not required, but the binding generator will pick up registered events
 	// and provide a strongly typed JS/TS API for them.
-	application.RegisterEvent[string]("time")
+	application.RegisterEvent[string]("serial_data")
 }
 
 // main function serves as the application's entry point. It initializes the application, creates a window,
@@ -38,7 +36,7 @@ func main() {
 		Name:        "Sepat",
 		Description: "串口通信助手",
 		Services: []application.Service{
-			application.NewService(&GreetService{}),
+			application.NewService(&SerialPortService{}),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
@@ -72,13 +70,13 @@ func main() {
 
 	// Create a goroutine that emits an event containing the current time every second.
 	// The frontend can listen to this event and update the UI accordingly.
-	go func() {
-		for {
-			now := time.Now().Format(time.RFC1123)
-			app.Event.Emit("time", now)
-			time.Sleep(time.Second)
-		}
-	}()
+	//go func() {
+	//	for {
+	//		now := time.Now().Format(time.RFC1123)
+	//		app.Event.Emit("init", now)
+	//		time.Sleep(time.Second)
+	//	}
+	//}()
 
 	// Run the application. This blocks until the application has been exited.
 	err := app.Run()
