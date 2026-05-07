@@ -11,6 +11,9 @@ importers:
       '@wailsio/runtime':
         specifier: latest
         version: 3.0.0-alpha.79
+      dayjs:
+        specifier: ^1.11.20
+        version: 1.11.20
       element-plus:
         specifier: ^2.13.7
         version: 2.13.7(typescript@4.9.5)(vue@3.5.33(typescript@4.9.5))

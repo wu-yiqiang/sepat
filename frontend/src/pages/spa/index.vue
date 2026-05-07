@@ -2,16 +2,16 @@
   <section class="Spa">
     <div class="left-container">
       <div class="left-top-container">
-        <el-input v-model="receivedText" type="textarea" readonly />
+        <el-input ref="textareaRef" v-model="receivedText" type="textarea" readonly />
         <div class="opeartion-container">
-          <el-checkbox v-model="autoScroll" :disabled="!formState.status">自动滚动</el-checkbox>
-          <el-checkbox v-model="timeStamp" :disabled="!formState.status">时间戳</el-checkbox>
+          <el-checkbox v-model="autoScroll">自动滚动</el-checkbox>
+          <el-checkbox v-model="timeStamp">时间戳</el-checkbox>
         </div>
         <div class="opeartion-container">
-          <el-select v-model="formState.receiveMode" placeholder="模式" :disabled="!formState.status">
+          <el-select v-model="formState.receiveMode" placeholder="模式" >
             <el-option v-for="item in Modes" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
-          <el-select v-model="formState.code" placeholder="编码" :disabled="!formState.status">
+          <el-select v-model="formState.code" placeholder="编码">
             <el-option v-for="item in Codes" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
           <el-button :disabled="receiveEmpty" @click="ClearReceiveText">清空</el-button>
@@ -42,22 +42,22 @@
             </el-select>
           </el-form-item>
           <el-form-item label="数据位">
-            <el-select v-model="formState.dataBits" placeholder="数据位">
+            <el-select v-model="formState.dataBits" placeholder="数据位" :disabled="connectDisabled">
               <el-option v-for="item in DataBites" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </el-form-item>
           <el-form-item label="停止位">
-            <el-select v-model="formState.stopBits" placeholder="停止位">
+            <el-select v-model="formState.stopBits" placeholder="停止位" :disabled="connectDisabled">
               <el-option v-for="item in StopBites" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </el-form-item>
           <el-form-item label="校验位">
-            <el-select v-model="formState.parityMode" placeholder="校验位">
+            <el-select v-model="formState.parityMode" placeholder="校验位" :disabled="connectDisabled">
               <el-option v-for="item in ParityModes" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </el-form-item>
           <el-form-item label="发送模式">
-            <el-select v-model="formState.sendMode" placeholder="发送模式">
+            <el-select v-model="formState.sendMode" placeholder="发送模式" :disabled="connectDisabled">
               <el-option v-for="item in Modes" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </el-form-item>
@@ -85,51 +85,46 @@
   </section>
 </template>
 <script lang="ts" setup>
+import dayjs from 'dayjs'
 import { ElMessage } from 'element-plus'
 import { debounce } from 'lodash-es'
 import { GetSerialPorts, OpenSerial, CloseSerial, SendData } from '../../../bindings/changeme/serialportservice'
 import { Events } from '@wailsio/runtime'
-import { computed, onMounted, ref, watch, watchEffect } from 'vue'
+import { computed, nextTick, onMounted, ref, watch, watchEffect } from 'vue'
+import { baudRates, codes, dataBites, modes, parityModes, stopBites } from './datas'
 interface OpeartionType {
   value: string
   label: string
 }
+interface DataType {
+  timeStamp: string
+  text: string
+}
 let timeInterval: any = null
-const receivedText = ref('')
 const sendText = ref('')
 const loading = ref(false)
 const timeStamp = ref(false)
 const autoScroll = ref(false)
-const ParityModes = ref([
-  { value: 0, label: 'None' },
-  { value: 1, label: 'Odd' },
-  { value: 2, label: 'Even' },
-])
+const textareaRef = ref()
+const ParityModes = ref(parityModes)
 const Coms = ref<OpeartionType[]>([])
-const BaudRates = ref([
-  { value: 9600, label: 9600 },
-  { value: 19200, label: 19200 },
-  { value: 18400, label: 18400 }
-])
-const Modes = ref([
-  { label: 'Hex', value: 'Hex' },
-  { label: 'Text', value: 'Text' }
-])
-const DataBites = ref([
-  { label: 5, value: 5 },
-  { label: 6, value: 6 },
-  { label: 7, value: 7 },
-  { label: 8, value: 8 }
-])
-const StopBites = ref([
-  { label: 1, value: 1 },
-  { label: 2, value: 2 }
-])
-const Codes = ref([
-  { label: 'ASCII', value: 'ASCII' },
-  { label: 'UTF-8', value: 'UTF-8' },
-  { label: 'UTF-16', value: 'UTF-16' }
-])
+const BaudRates = ref(baudRates)
+const receiveArrayText = ref<DataType[]>([])
+const receivedText = computed(() => {
+  if (timeStamp.value) return receiveArrayText.value?.map((cur) => {
+    return `【${cur?.timeStamp}】${cur?.text}`
+   }).join('\n')
+  return receiveArrayText.value.map((cur) => {
+    return `${cur?.text}`
+   }).join('\n')
+})
+setInterval(() => {
+  receiveArrayText.value.push({timeStamp: dayjs(new Date()).format('YYYY-MM-DD HH:mm:ss'), text: "888"})
+}, 3000)
+const Modes = ref(modes)
+const DataBites = ref(dataBites)
+const StopBites = ref(stopBites)
+const Codes = ref(codes)
 const formState = ref({
   port: '',
   baudRate: 9600,
@@ -144,10 +139,10 @@ const formState = ref({
   code: ''
 })
 const ClearReceiveText = () => {
-  receivedText.value = ''
+  receiveArrayText.value = []
 }
 const ClearSendText = () => {
-  sendText.value = ''
+  sendText.value = ""
 }
 const StatusDisabled = computed(() => {
   return !formState.value.baudRate || !formState.value.port || !formState.value.dataBits || !formState.value.stopBits || !formState.value.stopBits
@@ -159,7 +154,7 @@ const connectDisabled = computed(() => {
   return formState.value.status
 })
 const receiveEmpty = computed(() => {
-  return !receivedText.value?.length
+  return !receiveArrayText.value?.length
 })
 const handleSendText = debounce(async () => {
   // Events.On("serial_data", (data) => {
@@ -188,7 +183,6 @@ const openSearialPort = debounce(async () => {
   }
   finally {
     loading.value = false
-
   }
 }, 1000)
 const closeSearialPort = debounce(async () => {
@@ -245,11 +239,25 @@ watch(() => formState.value.autoSend, (newVal, _) => {
     console.log("关闭")
   }
 });
+const scrollBottom = () => {
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      const textarea = textareaRef.value?.$el.querySelector('textarea')
+      console.log("textarea", textarea)
+      textarea.scrollTop = textarea.scrollHeight;
+    })
+  })
+}
+
+watch(() => receiveArrayText.value, (val) => {
+  if (autoScroll.value) {
+    scrollBottom()
+  }
+})
 watch(() => formState.value.frequency, (val) => {
   timeInterval()
   timeInterval = createPersistentTask(handleSendText, val, { useBackgroundTime: true });
 });
-
 
 onMounted(() => {
   init()

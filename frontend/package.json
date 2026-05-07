@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@wailsio/runtime": "latest",
+    "dayjs": "^1.11.20",
     "element-plus": "^2.13.7",
     "vue": "^3.2.45"
   },
