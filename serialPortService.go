@@ -81,7 +81,7 @@ func (s *SerialPortService) isPortOpenable(portName string) bool {
 	return false
 }
 
-func (s *SerialPortService) OpenSerial(portName string, baudRate uint, dataBits uint, stopBits uint) error {
+func (s *SerialPortService) OpenSerial(portName string, baudRate uint, dataBits uint, stopBits uint, parityMode int) error {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	s.mu.Lock()
@@ -90,11 +90,19 @@ func (s *SerialPortService) OpenSerial(portName string, baudRate uint, dataBits 
 	if s.conn != nil {
 		s.conn.Close()
 	}
+	var ParityMode = serial.PARITY_NONE
+	if parityMode == 1 {
+		ParityMode = serial.PARITY_ODD
+	}
+	if parityMode == 2 {
+		ParityMode = serial.PARITY_EVEN
+	}
 	options := serial.OpenOptions{
 		PortName:              portName,
 		BaudRate:              baudRate,
 		DataBits:              dataBits,
 		StopBits:              stopBits,
+		ParityMode:            ParityMode,
 		MinimumReadSize:       1,
 		InterCharacterTimeout: 1000,
 	}
@@ -115,7 +123,6 @@ func (s *SerialPortService) OpenSerial(portName string, baudRate uint, dataBits 
 func (s *SerialPortService) readLoop() {
 	defer func() {
 		log.Println("读取协程已退出")
-		// 清理 cancel，防止内存泄漏
 		s.mu.Lock()
 		s.cancel = nil
 		s.mu.Unlock()
@@ -125,7 +132,6 @@ func (s *SerialPortService) readLoop() {
 
 	for {
 		fmt.Println("开始获取数据")
-		// 检查上下文是否已取消
 		select {
 		case <-s.ctx.Done():
 			fmt.Println("关闭连接了")
@@ -181,7 +187,7 @@ func (s *SerialPortService) SendData(data string) error {
 
 	// 写入数据
 	// 注意：如果协议需要换行符，请在这里拼接，例如 data + "\n"
-	fmt.Println("接受数据", data)
+	// fmt.Println("接收数据", data)
 	_, err := s.conn.Write([]byte(data))
 	if err != nil {
 		return fmt.Errorf("发送失败: %v", err)

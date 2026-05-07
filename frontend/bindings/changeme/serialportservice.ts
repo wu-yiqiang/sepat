@@ -15,8 +15,8 @@ export function GetSerialPorts(): $CancellablePromise<string[]> {
     });
 }
 
-export function OpenSerial(portName: string, baudRate: number, dataBits: number, stopBits: number): $CancellablePromise<void> {
-    return $Call.ByID(1859564582, portName, baudRate, dataBits, stopBits);
+export function OpenSerial(portName: string, baudRate: number, dataBits: number, stopBits: number, parityMode: number): $CancellablePromise<void> {
+    return $Call.ByID(1859564582, portName, baudRate, dataBits, stopBits, parityMode);
 }
 
 export function SendData(data: string): $CancellablePromise<void> {

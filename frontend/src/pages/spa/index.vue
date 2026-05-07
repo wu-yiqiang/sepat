@@ -52,8 +52,8 @@
             </el-select>
           </el-form-item>
           <el-form-item label="校验位">
-            <el-select v-model="formState.checkBits" placeholder="校验位">
-              <el-option v-for="item in CheckBites" :key="item.value" :label="item.label" :value="item.value" />
+            <el-select v-model="formState.parityMode" placeholder="校验位">
+              <el-option v-for="item in ParityModes" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </el-form-item>
           <el-form-item label="发送模式">
@@ -89,20 +89,21 @@ import { ElMessage } from 'element-plus'
 import { debounce } from 'lodash-es'
 import { GetSerialPorts, OpenSerial, CloseSerial, SendData } from '../../../bindings/changeme/serialportservice'
 import { Events } from '@wailsio/runtime'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch, watchEffect } from 'vue'
 interface OpeartionType {
   value: string
   label: string
 }
+let timeInterval: any = null
 const receivedText = ref('')
 const sendText = ref('')
 const loading = ref(false)
 const timeStamp = ref(false)
 const autoScroll = ref(false)
-const CheckBites = ref([
-  { value: 'None', label: 'None' },
-  { value: 'Even', label: 'Even' },
-  { value: 'Odd', label: 'Odd' }
+const ParityModes = ref([
+  { value: 0, label: 'None' },
+  { value: 1, label: 'Odd' },
+  { value: 2, label: 'Even' },
 ])
 const Coms = ref<OpeartionType[]>([])
 const BaudRates = ref([
@@ -135,7 +136,7 @@ const formState = ref({
   dataBits: 5,
   autoSend: false,
   stopBits: 1,
-  checkBits: 'None',
+  parityMode: 0,
   frequency: 1000,
   receiveMode: 'Text',
   sendMode: 'Text',
@@ -149,7 +150,7 @@ const ClearSendText = () => {
   sendText.value = ''
 }
 const StatusDisabled = computed(() => {
-  return !formState.value.baudRate || !formState.value.port || !formState.value.dataBits || !formState.value.stopBits || !formState.value.stopBits || !formState.value.checkBits
+  return !formState.value.baudRate || !formState.value.port || !formState.value.dataBits || !formState.value.stopBits || !formState.value.stopBits
 })
 const sendEmpty = computed(() => {
   return !sendText.value?.length
@@ -165,8 +166,10 @@ const handleSendText = debounce(async () => {
   //   console.log("收到串口数据:", data);
   //   receivedText.value = data?.data;
   // });
+  console.log("执行时间戳", new Date().getTime())
   try {
-    await SendData(receivedText.value)
+    console.log("ssss", sendText.value)
+    await SendData(sendText.value)
     ElMessage.success('数据发送成功')
   } catch (error) {
     ElMessage.error('数据发送失败')
@@ -175,7 +178,7 @@ const handleSendText = debounce(async () => {
 const openSearialPort = debounce(async () => {
   try {
     loading.value = true
-    await OpenSerial(formState.value?.port, formState.value?.baudRate, formState.value?.dataBits, formState.value?.stopBits)
+    await OpenSerial(formState.value?.port, formState.value?.baudRate, formState.value?.dataBits, formState.value?.stopBits, formState.value?.parityMode)
     formState.value.status = true
     ElMessage.success('串口连接成功')
     loading.value = false
@@ -208,44 +211,44 @@ const init = async () => {
   const data = await GetSerialPorts()
   Coms.value = data?.map((item) => ({ label: item, value: item })) ?? []
 }
-class TimeInterval {
-  interval: number
-  fn: Function
-  lastTime: number
-  timer: any
-  constructor(fn: Function, interval: number = 500) {
-    this.interval = interval
-    this.fn = fn
-    this.lastTime = 0
-    this.loop(0)
-  }
-  loop(timestamp: number) {
-    this.timer = requestAnimationFrame(TimeInterval.prototype.loop.bind(this))
-    if (timestamp - this.lastTime > this.interval) {
-      this.lastTime = timestamp
-      typeof this.fn == 'function' && this.fn()
+function createPersistentTask(callback, interval, options: any = {}) {
+  const { useBackgroundTime = false } = options;
+  let animationFrameId;
+  let lastExecTime = performance.now(); // 记录上次执行的实际物理时间
+  let isRunning = true;
+  function loop(currentTime) {
+    if (!isRunning) return;
+    const deltaTime = currentTime - lastExecTime;
+    if (deltaTime >= interval) {
+      callback(currentTime);
+      lastExecTime += interval; 
+      if (useBackgroundTime && deltaTime > interval * 2) {
+         lastExecTime = currentTime; 
+      }
     }
+    animationFrameId = requestAnimationFrame(loop);
   }
-  clear() {
-    cancelAnimationFrame(this.timer)
-    this.timer = null
-  }
+  animationFrameId = requestAnimationFrame(loop);
+  return () => {
+    isRunning = false;
+    cancelAnimationFrame(animationFrameId);
+  };
 }
 
-watch(
-  () => formState.value.autoSend,
-  (newVal, oldVal) => {
-    console.log("自动", newVal)
-    const timeInterval =  new TimeInterval(() => {
-        handleSendText
-    }, formState.value.frequency)
-    if (newVal) {
-      timeInterval
-    } else {
-      timeInterval.clear()
-    }
+watch(() => formState.value.autoSend, (newVal, _) => {
+   if (newVal) {
+    timeInterval = createPersistentTask(handleSendText, formState.value.frequency, { useBackgroundTime: true });
+    console.log("开始", new Date().getTime())
   }
-)
+  if (!newVal && timeInterval) {
+    timeInterval()
+    console.log("关闭")
+  }
+});
+watch(() => formState.value.frequency, (val) => {
+  timeInterval()
+  timeInterval = createPersistentTask(handleSendText, val, { useBackgroundTime: true });
+});
 
 
 onMounted(() => {
