@@ -14,7 +14,8 @@
       </div>
       <div class="left-bottom-container">
         <div class="send-container">
-          <el-input v-model.trim="sendText" :autosize="{ minRows: 3, maxRows: 3 }" show-word-limit type="textarea" @change="(value) => { isHex && writeHex(value) }"
+          <el-input v-model.trim="sendText"
+ :autosize="{ minRows: 3, maxRows: 3 }" show-word-limit type="textarea" @change="(value) => { isHex && writeHex(value) }"
 />
           <div class="opeartion-container">
             <el-button :disabled="sendEmpty || !formState?.status" type="primary" @click="handleSendText">发送</el-button>
@@ -106,12 +107,15 @@ const ParityModes = ref(parityModes)
 const Coms = ref<OpeartionType[]>([])
 const BaudRates = ref(baudRates)
 const receiveArrayText = ref<DataType[]>([])
+const receiveModeIsHex = computed(() => {
+  return formState.value.receiveMode === 'HEX'
+})
 const receivedText = computed(() => {
   if (timeStamp.value) return receiveArrayText.value?.map((cur) => {
-    return `【${cur?.timeStamp}】${cur?.text}`
+    return `【${cur?.timeStamp}】${receiveModeIsHex.value ? converToHex(cur?.text) : cur?.text}`
    }).join('\n')
   return receiveArrayText.value.map((cur) => {
-    return `${cur?.text}`
+    return `${receiveModeIsHex.value ?  converToHex(cur?.text) : cur?.text}`
    }).join('\n')
 })
 setInterval(() => {
@@ -216,10 +220,14 @@ const isUtf8 = computed(() => {
   return formState.value.sendMode === "UTF-8"
 })
 const writeString = (value) => {
-   sendText.value = value
+  sendText.value = value
+}
+const converToHex = (value) => {
+  const val = value.replace(/[^0-9a-fA-F]/g, '');
+  return stringToHex(val)
 }
 const writeHex = (value) => {
-  sendText.value = stringToHex(value)
+  sendText.value = converToHex(value)
 }
 const handleStringHex = () => {
   if (isHex.value) {

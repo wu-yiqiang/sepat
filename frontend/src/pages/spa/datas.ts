@@ -56,7 +56,7 @@ export function createPersistentTask(callback, interval, options: any = {}) {
 export const stringToHex = (data) => {
   const encoder = new TextEncoder()
   const bytes = encoder.encode(data)
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join(' ')
 }
 
 export const hexToString = (hexString) => {
