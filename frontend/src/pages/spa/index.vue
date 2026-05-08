@@ -4,14 +4,9 @@
       <div class="left-top-container">
         <el-input ref="textareaRef" v-model="receivedText" type="textarea" readonly />
         <div class="opeartion-container">
+          <el-checkbox v-model="timeStamp">显示时间戳</el-checkbox>
           <el-checkbox v-model="autoScroll">自动滚动</el-checkbox>
-          <el-checkbox v-model="timeStamp">时间戳</el-checkbox>
-        </div>
-        <div class="opeartion-container">
-          <el-select v-model="formState.receiveMode" placeholder="模式" >
-            <el-option v-for="item in Modes" :key="item.value" :label="item.label" :value="item.value" />
-          </el-select>
-          <el-select v-model="formState.code" placeholder="编码">
+           <el-select v-model="formState.receiveMode" placeholder="编码模式">
             <el-option v-for="item in Codes" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
           <el-button :disabled="receiveEmpty" @click="ClearReceiveText">清空</el-button>
@@ -19,7 +14,8 @@
       </div>
       <div class="left-bottom-container">
         <div class="send-container">
-          <el-input v-model="sendText" :autosize="{ minRows: 3, maxRows: 3 }" show-word-limit type="textarea" />
+          <el-input v-model.trim="sendText" :autosize="{ minRows: 3, maxRows: 3 }" show-word-limit type="textarea" @change="handleStringHex"
+/>
           <div class="opeartion-container">
             <el-button :disabled="sendEmpty || !formState?.status" type="primary" @click="handleSendText">发送</el-button>
             <el-button :disabled="sendEmpty" @click="ClearSendText">清空</el-button>
@@ -56,18 +52,18 @@
               <el-option v-for="item in ParityModes" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </el-form-item>
-          <el-form-item label="发送模式">
-            <el-select v-model="formState.sendMode" placeholder="发送模式" :disabled="connectDisabled">
-              <el-option v-for="item in Modes" :key="item.value" :label="item.label" :value="item.value" />
+          <el-form-item label="编码模式">
+            <el-select v-model="formState.sendMode" placeholder="编码模式" :disabled="connectDisabled" @change="handleStringHex">
+              <el-option v-for="item in Codes" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </el-form-item>
           <el-form-item label="自动发送">
             <el-switch v-model="formState.autoSend" :disabled="!formState.status" />
           </el-form-item>
           <el-form-item v-if="formState?.autoSend" label="发送周期">
-            <el-input-number style="width: 100%" v-model="formState.frequency" :min="1">
+            <el-input-number style="width: 100%" v-model="formState.frequency" :min="100">
               <template #suffix>
-                <span>毫秒</span>
+                <span>ms</span>
               </template>
             </el-input-number>
           </el-form-item>
@@ -90,8 +86,8 @@ import { ElMessage } from 'element-plus'
 import { debounce } from 'lodash-es'
 import { GetSerialPorts, OpenSerial, CloseSerial, SendData } from '../../../bindings/changeme/serialportservice'
 import { Events } from '@wailsio/runtime'
-import { computed, nextTick, onMounted, ref, watch, watchEffect } from 'vue'
-import { baudRates, codes, dataBites, modes, parityModes, stopBites } from './datas'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { baudRates, codes, createPersistentTask, dataBites, hexToString, parityModes, stopBites, stringToHex } from './datas'
 interface OpeartionType {
   value: string
   label: string
@@ -119,24 +115,22 @@ const receivedText = computed(() => {
    }).join('\n')
 })
 setInterval(() => {
-  receiveArrayText.value.push({timeStamp: dayjs(new Date()).format('YYYY-MM-DD HH:mm:ss'), text: "888"})
-}, 3000)
-const Modes = ref(modes)
+  receiveArrayText.value.push({timeStamp: dayjs(new Date()).format('YYYY-MM-DD HH:mm:ss.SSS'), text: "888"})
+}, 10000)
 const DataBites = ref(dataBites)
 const StopBites = ref(stopBites)
 const Codes = ref(codes)
 const formState = ref({
   port: '',
   baudRate: 9600,
-  dataBits: 5,
+  dataBits: 8,
   autoSend: false,
   stopBits: 1,
   parityMode: 0,
   frequency: 1000,
-  receiveMode: 'Text',
-  sendMode: 'Text',
+  receiveMode: 'ASCII',
+  sendMode: 'ASCII',
   status: false,
-  code: ''
 })
 const ClearReceiveText = () => {
   receiveArrayText.value = []
@@ -163,7 +157,6 @@ const handleSendText = debounce(async () => {
   // });
   console.log("执行时间戳", new Date().getTime())
   try {
-    console.log("ssss", sendText.value)
     await SendData(sendText.value)
     ElMessage.success('数据发送成功')
   } catch (error) {
@@ -205,29 +198,6 @@ const init = async () => {
   const data = await GetSerialPorts()
   Coms.value = data?.map((item) => ({ label: item, value: item })) ?? []
 }
-function createPersistentTask(callback, interval, options: any = {}) {
-  const { useBackgroundTime = false } = options;
-  let animationFrameId;
-  let lastExecTime = performance.now(); // 记录上次执行的实际物理时间
-  let isRunning = true;
-  function loop(currentTime) {
-    if (!isRunning) return;
-    const deltaTime = currentTime - lastExecTime;
-    if (deltaTime >= interval) {
-      callback(currentTime);
-      lastExecTime += interval; 
-      if (useBackgroundTime && deltaTime > interval * 2) {
-         lastExecTime = currentTime; 
-      }
-    }
-    animationFrameId = requestAnimationFrame(loop);
-  }
-  animationFrameId = requestAnimationFrame(loop);
-  return () => {
-    isRunning = false;
-    cancelAnimationFrame(animationFrameId);
-  };
-}
 
 watch(() => formState.value.autoSend, (newVal, _) => {
    if (newVal) {
@@ -239,18 +209,28 @@ watch(() => formState.value.autoSend, (newVal, _) => {
     console.log("关闭")
   }
 });
+const handleStringHex = () => {
+  if (formState.value.sendMode === "ASCII") {
+    sendText.value = hexToString(sendText.value)?.join(' ')
+  }
+  if (formState.value.sendMode === "HEX") {
+    sendText.value = stringToHex(sendText.value)?.join(' ')
+  }
+  console.log('999',formState.value.sendMode, sendText.value)
+}
+
 const scrollBottom = () => {
   nextTick(() => {
     requestAnimationFrame(() => {
       const textarea = textareaRef.value?.$el.querySelector('textarea')
-      console.log("textarea", textarea)
       textarea.scrollTop = textarea.scrollHeight;
     })
   })
 }
 
-watch(() => receiveArrayText.value, (val) => {
+watch(() => receivedText.value, (val) => {
   if (autoScroll.value) {
+    console.log('sssss')
     scrollBottom()
   }
 })
