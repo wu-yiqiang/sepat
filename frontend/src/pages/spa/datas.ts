@@ -22,9 +22,9 @@ export const stopBites = [
   { label: 2, value: 2 }
 ]
 export const codes = [
-  { label: 'ASCII', value: 'ASCII' },
-  { label: 'HEX', value: 'HEX' }
-  // { label: 'UTF-8', value: 'UTF-8' },
+  { label: 'UTF-8', value: 'UTF-8' },
+  // { label: 'ASCII', value: 'ASCII' },
+  { label: 'HEX', value: 'HEX' },
   // { label: 'UTF-16', value: 'UTF-16' }
 ]
 
@@ -54,19 +54,20 @@ export function createPersistentTask(callback, interval, options: any = {}) {
 }
 
 export const stringToHex = (data) => {
-  if (typeof data === 'number') {
-    const buffer = new ArrayBuffer(4)
-    const view = new DataView(buffer)
-    view.setUint32(0, data)
-    return new Uint8Array(buffer)
-  }
-  if (typeof data === 'string') {
-    return new TextEncoder().encode(data)
-  }
-  return new Uint8Array(0)
+  const encoder = new TextEncoder()
+  const bytes = encoder.encode(data)
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
-export const hexToString = (hex) => {
-  const str = String(hex)
-  return new TextEncoder().encode(str)
+export const hexToString = (hexString) => {
+  const cleanHex = hexString.replace(/\s/g, '').toLowerCase()
+  if (cleanHex.length % 2 !== 0) {
+    throw new Error('无效的十六进制字符串：长度必须为偶数')
+  }
+  const bytes = new Uint8Array(cleanHex.length / 2)
+  for (let i = 0; i < cleanHex.length; i += 2) {
+    bytes[i / 2] = parseInt(cleanHex.substr(i, 2), 16)
+  }
+  const decoder = new TextDecoder('utf-8')
+  return decoder.decode(bytes)
 }

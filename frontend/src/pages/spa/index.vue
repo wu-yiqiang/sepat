@@ -14,7 +14,7 @@
       </div>
       <div class="left-bottom-container">
         <div class="send-container">
-          <el-input v-model.trim="sendText" :autosize="{ minRows: 3, maxRows: 3 }" show-word-limit type="textarea" @change="handleStringHex"
+          <el-input v-model.trim="sendText" :autosize="{ minRows: 3, maxRows: 3 }" show-word-limit type="textarea" @change="(value) => { isHex && writeHex(value) }"
 />
           <div class="opeartion-container">
             <el-button :disabled="sendEmpty || !formState?.status" type="primary" @click="handleSendText">发送</el-button>
@@ -83,7 +83,7 @@
 <script lang="ts" setup>
 import dayjs from 'dayjs'
 import { ElMessage } from 'element-plus'
-import { debounce } from 'lodash-es'
+import { debounce, values } from 'lodash-es'
 import { GetSerialPorts, OpenSerial, CloseSerial, SendData } from '../../../bindings/changeme/serialportservice'
 import { Events } from '@wailsio/runtime'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
@@ -128,8 +128,8 @@ const formState = ref({
   stopBits: 1,
   parityMode: 0,
   frequency: 1000,
-  receiveMode: 'ASCII',
-  sendMode: 'ASCII',
+  receiveMode: 'UTF-8',
+  sendMode: 'UTF-8',
   status: false,
 })
 const ClearReceiveText = () => {
@@ -209,12 +209,24 @@ watch(() => formState.value.autoSend, (newVal, _) => {
     console.log("关闭")
   }
 });
+const isHex = computed(() => {
+  return formState.value.sendMode === "HEX"
+})
+const isUtf8 = computed(() => {
+  return formState.value.sendMode === "UTF-8"
+})
+const writeString = (value) => {
+   sendText.value = value
+}
+const writeHex = (value) => {
+  sendText.value = stringToHex(value)
+}
 const handleStringHex = () => {
-  if (formState.value.sendMode === "ASCII") {
-    sendText.value = hexToString(sendText.value)?.join(' ')
+  if (isHex.value) {
+    writeHex(sendText.value)
   }
-  if (formState.value.sendMode === "HEX") {
-    sendText.value = stringToHex(sendText.value)?.join(' ')
+  if (isUtf8.value) {
+    writeString(hexToString(sendText.value))
   }
   console.log('999',formState.value.sendMode, sendText.value)
 }
@@ -230,7 +242,6 @@ const scrollBottom = () => {
 
 watch(() => receivedText.value, (val) => {
   if (autoScroll.value) {
-    console.log('sssss')
     scrollBottom()
   }
 })
