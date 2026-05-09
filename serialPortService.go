@@ -12,14 +12,16 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 )
 
 type SerialPortService struct {
-	ctx    context.Context
-	conn   io.ReadWriteCloser
-	app    *application.App
-	cancel context.CancelFunc // 用于通知 readLoop 退出
-	mu     sync.Mutex         // 互斥锁，保护 conn
+	platformAdapter PlatformAdapter // 平台适配器
+	ctx             context.Context
+	conn            io.ReadWriteCloser
+	app             *application.App
+	cancel          context.CancelFunc // 用于通知 readLoop 退出
+	mu              sync.Mutex         // 互斥锁，保护 conn
 }
 
 func (s *SerialPortService) GetSerialPorts() ([]string, error) {
@@ -82,20 +84,39 @@ func (s *SerialPortService) isPortOpenable(portName string) bool {
 }
 
 func (s *SerialPortService) OpenSerial(portName string, baudRate uint, dataBits uint, stopBits uint, parityMode int) error {
+	//var ParityMode = serial.PARITY_NONE
+	//switch {
+	//case parityMode == 1:
+	//	ParityMode = serial.PARITY_ODD
+	//case parityMode == 2:
+	//	ParityMode = serial.PARITY_EVEN
+	//default:
+	//	ParityMode = serial.PARITY_NONE
+	//}
+	//options := serial.OpenOptions{
+	//	PortName:              portName,
+	//	BaudRate:              baudRate,
+	//	DataBits:              dataBits,
+	//	StopBits:              stopBits,
+	//	ParityMode:            ParityMode,
+	//	MinimumReadSize:       1,
+	//	InterCharacterTimeout: 1000,
+	//}
+	//return s.platformAdapter.Open(options)
 	ctx, cancel := context.WithCancel(context.Background())
-
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
 	if s.conn != nil {
 		s.conn.Close()
 	}
 	var ParityMode = serial.PARITY_NONE
-	if parityMode == 1 {
+	switch {
+	case parityMode == 1:
 		ParityMode = serial.PARITY_ODD
-	}
-	if parityMode == 2 {
+	case parityMode == 2:
 		ParityMode = serial.PARITY_EVEN
+	default:
+		ParityMode = serial.PARITY_NONE
 	}
 	options := serial.OpenOptions{
 		PortName:              portName,
@@ -106,7 +127,6 @@ func (s *SerialPortService) OpenSerial(portName string, baudRate uint, dataBits 
 		MinimumReadSize:       1,
 		InterCharacterTimeout: 1000,
 	}
-
 	var err error
 	s.conn, err = serial.Open(options)
 	if err != nil {
@@ -131,60 +151,79 @@ func (s *SerialPortService) readLoop() {
 	reader := bufio.NewReader(s.conn)
 
 	for {
-		fmt.Println("开始获取数据")
+		// 创建一个 1 秒的超时定时器
+		readTimeout := time.After(1 * time.Second)
+
+		// 用于接收读取结果的通道
+		readResult := make(chan struct {
+			line string
+			err  error
+		}, 1)
+
+		// 在一个新的 goroutine 中执行阻塞读取
+		go func() {
+			line, err := reader.ReadString('\n')
+			readResult <- struct {
+				line string
+				err  error
+			}{line, err}
+		}()
+
+		// 使用 select 等待：要么是读取完成，要么是超时，要么是收到取消信号
 		select {
 		case <-s.ctx.Done():
-			fmt.Println("关闭连接了")
+			// 1. 收到取消信号，立即退出
+			log.Println("收到取消信号，退出读取循环")
 			return
-		default:
-			fmt.Println("读取数据前")
-			line, err := reader.ReadString('\n')
-			fmt.Println("读取数据后")
-			if err != nil {
-				// 如果是 EOF 或者上下文取消，直接退出
-				if err == io.EOF || s.ctx.Err() != nil {
+
+		case <-readTimeout:
+			continue
+
+		case result := <-readResult:
+			if result.err != nil {
+				if result.err == io.EOF || s.ctx.Err() != nil {
 					return
 				}
-				log.Printf("读取错误: %v", err)
-				continue
+				log.Printf("读取错误: %v", result.err)
+				return
 			}
-			fmt.Println("获取数据了", line)
-			s.app.Event.Emit("serial_data", line)
+			s.app.Event.Emit("serial_data", result.line)
 		}
 	}
 }
 
 func (s *SerialPortService) CloseSerial() error {
 	s.mu.Lock()
-	conn := s.conn // 保存引用
-	s.conn = nil   // 立即置空
+	conn := s.conn
+	s.conn = nil
+	cancel := s.cancel
 	s.mu.Unlock()
-
 	if conn == nil {
 		return nil
 	}
-
-	// 1. 先关闭底层连接
-	// 这会强制 readLoop 中的 ReadString 立即返回错误 (通常是 "file already closed")
-	err := conn.Close()
-
-	// 2. 再取消 Context，确保 readLoop 能收到信号
-	if s.cancel != nil {
-		s.cancel()
+	if cancel != nil {
+		cancel()
 	}
-
-	// 忽略 "file already closed" 错误，因为可能是我们自己关闭的
-	if err != nil && !strings.Contains(err.Error(), "already closed") {
-		return err
+	done := make(chan error, 1)
+	go func() {
+		done <- conn.Close()
+	}()
+	select {
+	case err := <-done:
+		if err != nil && !strings.Contains(err.Error(), "already closed") {
+			return err
+		}
+		return nil
+	case <-time.After(5 * time.Second):
+		log.Println("警告：串口关闭超时，强制返回")
+		return fmt.Errorf("串口关闭超时（可能是设备已断开或驱动卡死）")
 	}
-	return nil
 }
 
 func (s *SerialPortService) SendData(data string) error {
 	if s.conn == nil {
 		return fmt.Errorf("串口未打开，请先连接")
 	}
-
 	// 写入数据
 	// 注意：如果协议需要换行符，请在这里拼接，例如 data + "\n"
 	// fmt.Println("接收数据", data)
